@@ -1635,3 +1635,7 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
 
  GET / 500 in 14ms (compile: 4ms, render: 10ms)
+⨯ ./src/app/(landing)
+You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
+
+ GET / 500 in 19ms (compile: 8ms, render: 11ms)
