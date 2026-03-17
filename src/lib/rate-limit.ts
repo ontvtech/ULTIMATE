@@ -2,6 +2,7 @@
 // SaaSWPP AI Platform - Rate Limiting
 // ============================================
 
+import { NextResponse } from 'next/server'
 import { RateLimitConfig, RateLimitResult, RateLimitIdentifierType } from '@/types'
 
 interface RateLimitEntry {
@@ -299,17 +300,16 @@ export function createRateLimitHeaders(result: RateLimitResult): Headers {
 /**
  * Rate limit response for blocked requests
  */
-export function rateLimitResponse(result: RateLimitResult): Response {
+export function rateLimitResponse(result: RateLimitResult): NextResponse {
   const headers = createRateLimitHeaders(result)
-  headers.set('Content-Type', 'application/json')
 
-  return new Response(
-    JSON.stringify({
+  return NextResponse.json(
+    {
       success: false,
       error: 'Too Many Requests',
       message: `Rate limit exceeded. Try again in ${result.retryAfter} seconds.`,
       retryAfter: result.retryAfter,
-    }),
+    },
     {
       status: 429,
       headers,

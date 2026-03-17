@@ -271,7 +271,7 @@ export class OpenAIProvider implements AIProvider {
    */
   async createStreamingCompletion(
     messages: ChatMessage[],
-    options: StreamingOptions = {}
+    options: Partial<StreamingOptions> = {}
   ): Promise<StreamingResult> {
     await this.initialize();
     

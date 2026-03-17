@@ -14,7 +14,7 @@ import {
   Check,
   Store,
   Scissors,
-  UtenselsCrossed,
+  UtensilsCrossed,
   Car,
   Home,
   Briefcase,
@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 const niches = [
   { id: "varejo", name: "Varejo / E-commerce", icon: Store },
   { id: "salao", name: "Salão de Beleza", icon: Scissors },
-  { id: "restaurante", name: "Restaurante / Delivery", icon: UtenselsCrossed },
+  { id: "restaurante", name: "Restaurante / Delivery", icon: UtensilsCrossed },
   { id: "auto", name: "Autopeças / Oficina", icon: Car },
   { id: "imobiliaria", name: "Imobiliária", icon: Home },
   { id: "servicos", name: "Serviços Gerais", icon: Briefcase },

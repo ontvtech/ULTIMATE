@@ -140,47 +140,52 @@ enum AIExecutionStatus {
 // ============================================
 
 model Tenant {
-  id            String        @id @default(cuid())
-  name          String
-  slug          String        @unique
-  tradeName     String?
-  document      String?
-  phone         String?
-  email         String?
-  logoUrl       String?
-  timezone      String        @default("America/Sao_Paulo")
-  status        TenantStatus  @default(ACTIVE)
-  tenantType    TenantType    @default(MERCHANT)
+  id              String       @id @default(cuid())
+  name            String
+  slug            String       @unique
+  tradeName       String?
+  document        String?
+  phone           String?
+  email           String?
+  logoUrl         String?
+  timezone        String       @default("America/Sao_Paulo")
+  status          TenantStatus @default(ACTIVE)
+  tenantType      TenantType   @default(MERCHANT)
   nicheTemplateId String?
-  resellerId    String?
-  settings      String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  deletedAt     DateTime?
+  resellerId      String?
+  settings        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
 
   // Relations
-  users         UserTenant[]
-  subscriptions Subscription[]
-  conversations Conversation[]
-  customers     Customer[]
-  leads         Lead[]
-  appointments  Appointment[]
-  orders        Order[]
-  serviceOrders ServiceOrder[]
-  cashEntries   CashEntry[]
-  aiProfile     AiProfile?
-  knowledgeItems KnowledgeItem[]
-  catalogItems  CatalogItem[]
-  campaigns     Campaign[]
-  alerts        OperationalAlert[]
-  handoffs      Handoff[]
-  internalContacts InternalContact[]
+  users             UserTenant[]
+  subscriptions     Subscription[]
+  conversations     Conversation[]
+  customers         Customer[]
+  leads             Lead[]
+  appointments      Appointment[]
+  orders            Order[]
+  serviceOrders     ServiceOrder[]
+  cashEntries       CashEntry[]
+  aiProfile         AiProfile?
+  knowledgeItems    KnowledgeItem[]
+  catalogItems      CatalogItem[]
+  campaigns         Campaign[]
+  alerts            OperationalAlert[]
+  handoffs          Handoff[]
+  internalContacts  InternalContact[]
   whatsappInstances WhatsAppInstance[]
-  metaWallet    MetaWallet?
-  usageCounters UsageCounter[]
-  auditLogs     AuditLog[]
-  tenantAddons  TenantAddon[]
-  pipelineStages PipelineStage[]
+  metaWallet        MetaWallet?
+  usageCounters     UsageCounter[]
+  auditLogs         AuditLog[]
+  tenantAddons      TenantAddon[]
+  pipelineStages    PipelineStage[]
+
+  // Reseller relation - quem indicou este tenant
+  referredBy              ResellerProfile?         @relation("ResellerReferrals", fields: [resellerId], references: [id])
+  resellerLeadAttribution ResellerLeadAttribution?
+  nicheTemplate           NicheTemplate?           @relation(fields: [nicheTemplateId], references: [id])
 
   @@index([status])
   @@index([resellerId])
@@ -188,19 +193,20 @@ model Tenant {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
   phone        String?
   avatarUrl    String?
-  status       String   @default("ACTIVE")
+  status       String    @default("ACTIVE")
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  userTenants  UserTenant[]
-  auditLogs    AuditLog[]
+  userTenants     UserTenant[]
+  auditLogs       AuditLog[]
+  resellerProfile ResellerProfile?
 
   @@index([email])
 }
@@ -213,9 +219,9 @@ model UserTenant {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id])
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -228,8 +234,8 @@ model Role {
   description String?
   createdAt   DateTime @default(now())
 
-  permissions   RolePermission[]
-  userTenants   UserTenant[]
+  permissions RolePermission[]
+  userTenants UserTenant[]
 }
 
 model Permission {
@@ -271,10 +277,10 @@ model Plan {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  planModules  PlanModule[]
-  planLimits   PlanLimit[]
+  planModules   PlanModule[]
+  planLimits    PlanLimit[]
   subscriptions Subscription[]
-  tenantAddons TenantAddon[]
+  tenantAddons  TenantAddon[]
 
   @@index([status])
 }
@@ -331,12 +337,12 @@ model Addon {
 }
 
 model TenantAddon {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   tenantId  String
   addonId   String
   planId    String?
-  status    String   @default("ACTIVE")
-  startedAt DateTime @default(now())
+  status    String    @default("ACTIVE")
+  startedAt DateTime  @default(now())
   expiresAt DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -364,9 +370,9 @@ model Subscription {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan     Plan       @relation(fields: [planId], references: [id])
-  invoices Invoice[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan              Plan               @relation(fields: [planId], references: [id])
+  invoices          Invoice[]
   commissionLedgers CommissionLedger[]
 
   @@index([tenantId])
@@ -374,18 +380,18 @@ model Subscription {
 }
 
 model Invoice {
-  id               String   @id @default(cuid())
-  subscriptionId   String
-  providerInvoiceId String? @unique
-  status           String   @default("PENDING")
-  amount           Float
-  currency         String   @default("BRL")
-  dueDate          DateTime
-  paidAt           DateTime?
-  paymentUrl       String?
-  pdfUrl           String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String    @id @default(cuid())
+  subscriptionId    String
+  providerInvoiceId String?   @unique
+  status            String    @default("PENDING")
+  amount            Float
+  currency          String    @default("BRL")
+  dueDate           DateTime
+  paidAt            DateTime?
+  paymentUrl        String?
+  pdfUrl            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -394,15 +400,15 @@ model Invoice {
 }
 
 model TenantBillingStatus {
-  id                String   @id @default(cuid())
-  tenantId          String   @unique
-  status            String   @default("ACTIVE")
-  enforcementLevel  Int      @default(0)
-  graceEndsAt       DateTime?
-  readOnlyReason    String?
-  blockedModules    String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String    @id @default(cuid())
+  tenantId         String    @unique
+  status           String    @default("ACTIVE")
+  enforcementLevel Int       @default(0)
+  graceEndsAt      DateTime?
+  readOnlyReason   String?
+  blockedModules   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 // ============================================
@@ -412,19 +418,18 @@ model TenantBillingStatus {
 model ResellerProfile {
   id                 String   @id @default(cuid())
   userId             String   @unique
-  tenantId           String?
   displayName        String
   status             String   @default("ACTIVE")
   commissionPolicyId String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  user           User                    @relation(fields: [userId], references: [id])
-  tenant         Tenant?                 @relation(fields: [tenantId], references: [id])
-  links          ResellerLink[]
-  attributedLeads ResellerLeadAttribution[]
+  user              User                      @relation(fields: [userId], references: [id])
+  links             ResellerLink[]
+  attributedLeads   ResellerLeadAttribution[]
   commissionLedgers CommissionLedger[]
-  tenants        Tenant[]
+  referredTenants   Tenant[]                  @relation("ResellerReferrals")
+  commissionPolicy  CommissionPolicy?         @relation(fields: [commissionPolicyId], references: [id])
 
   @@index([status])
 }
@@ -465,12 +470,12 @@ model ResellerLeadAttribution {
 }
 
 model CommissionPolicy {
-  id           String   @id @default(cuid())
-  name         String
-  basePercent  Float    @default(20.0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  basePercent Float    @default(20.0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tiers     CommissionTier[]
   resellers ResellerProfile[]
@@ -501,8 +506,8 @@ model CommissionLedger {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  reseller    ResellerProfile @relation(fields: [resellerId], references: [id])
-  subscription Subscription?  @relation(fields: [subscriptionId], references: [id])
+  reseller     ResellerProfile @relation(fields: [resellerId], references: [id])
+  subscription Subscription?   @relation(fields: [subscriptionId], references: [id])
 
   @@index([resellerId, competenceMonth])
 }
@@ -512,18 +517,18 @@ model CommissionLedger {
 // ============================================
 
 model WhatsAppInstance {
-  id                   String   @id @default(cuid())
-  tenantId             String
-  provider             String
-  providerInstanceId   String?
-  status               String   @default("DISCONNECTED")
-  phoneNumberId        String?
-  wabaId               String?
-  instanceName         String?
-  qrCode               String?
-  lastSeenAt           DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  tenantId           String
+  provider           String
+  providerInstanceId String?
+  status             String    @default("DISCONNECTED")
+  phoneNumberId      String?
+  wabaId             String?
+  instanceName       String?
+  qrCode             String?
+  lastSeenAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   numbers WhatsAppNumber[]
@@ -532,15 +537,15 @@ model WhatsAppInstance {
 }
 
 model WhatsAppNumber {
-  id             String   @id @default(cuid())
-  instanceId     String
-  phoneE164      String   @unique
-  displayName    String?
-  status         String   @default("ACTIVE")
-  qualityRating  String?
-  messagingTier  String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  instanceId    String
+  phoneE164     String   @unique
+  displayName   String?
+  status        String   @default("ACTIVE")
+  qualityRating String?
+  messagingTier String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   instance WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 }
@@ -550,45 +555,45 @@ model WhatsAppNumber {
 // ============================================
 
 model Conversation {
-  id                String             @id @default(cuid())
-  tenantId          String
-  customerId        String
-  channel           String             @default("WHATSAPP")
-  status            ConversationStatus @default(OPEN)
-  aiMode            Boolean            @default(true)
-  assignedMode      String             @default("AI")
-  assignedUserId    String?
-  lastMessageAt     DateTime           @default(now())
+  id                 String             @id @default(cuid())
+  tenantId           String
+  customerId         String
+  channel            String             @default("WHATSAPP")
+  status             ConversationStatus @default(OPEN)
+  aiMode             Boolean            @default(true)
+  assignedMode       String             @default("AI")
+  assignedUserId     String?
+  lastMessageAt      DateTime           @default(now())
   lastMessagePreview String?
-  unreadCount       Int                @default(0)
-  intentDetected    String?
-  sentimentScore    Float?
-  confidenceScore   Float?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  unreadCount        Int                @default(0)
+  intentDetected     String?
+  sentimentScore     Float?
+  confidenceScore    Float?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer  Customer @relation(fields: [customerId], references: [id])
-  messages  Message[]
-  handoffs  Handoff[]
-  alerts    OperationalAlert[]
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer           @relation(fields: [customerId], references: [id])
+  messages Message[]
+  handoffs Handoff[]
+  alerts   OperationalAlert[]
 
   @@index([tenantId, lastMessageAt])
   @@index([tenantId, status])
 }
 
 model Message {
-  id                 String          @id @default(cuid())
-  conversationId     String
-  direction          MessageDirection
-  contentType        String          @default("TEXT")
-  content            String
-  provider           String?
-  providerMessageId  String?         @unique
-  aiGenerated        Boolean         @default(false)
-  aiProvider         String?
-  status             String          @default("SENT")
-  createdAt          DateTime        @default(now())
+  id                String           @id @default(cuid())
+  conversationId    String
+  direction         MessageDirection
+  contentType       String           @default("TEXT")
+  content           String
+  provider          String?
+  providerMessageId String?          @unique
+  aiGenerated       Boolean          @default(false)
+  aiProvider        String?
+  status            String           @default("SENT")
+  createdAt         DateTime         @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -600,21 +605,21 @@ model Message {
 // ============================================
 
 model Customer {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String
   name        String
   phoneE164   String
   email       String?
-  status      String   @default("ACTIVE")
-  totalOrders Int      @default(0)
-  totalSpent  Float    @default(0)
+  status      String    @default("ACTIVE")
+  totalOrders Int       @default(0)
+  totalSpent  Float     @default(0)
   lastOrderAt DateTime?
   tags        String
   metadata    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversations Conversation[]
   leads         Lead[]
   orders        Order[]
@@ -641,8 +646,8 @@ model Lead {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer  Customer @relation(fields: [customerId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer      Customer       @relation(fields: [customerId], references: [id])
   followUpTasks FollowUpTask[]
 
   @@index([tenantId, status])
@@ -656,21 +661,22 @@ model PipelineStage {
   order     Int      @default(0)
   color     String?
   createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, order])
 }
 
 model FollowUpTask {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   leadId      String
   tenantId    String
   title       String
   description String?
   dueAt       DateTime
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
   completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
@@ -683,7 +689,7 @@ model FollowUpTask {
 // ============================================
 
 model Appointment {
-  id             String             @id @default(cuid())
+  id             String            @id @default(cuid())
   tenantId       String
   customerId     String
   conversationId String?
@@ -691,17 +697,17 @@ model Appointment {
   description    String?
   startAt        DateTime
   endAt          DateTime
-  status         AppointmentStatus  @default(SCHEDULED)
-  mode           String             @default("AUTO")
+  status         AppointmentStatus @default(SCHEDULED)
+  mode           String            @default("AUTO")
   serviceTypeId  String?
   assignedUserId String?
-  origin         String             @default("MANUAL")
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  origin         String            @default("MANUAL")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer      Customer      @relation(fields: [customerId], references: [id])
-  serviceOrder  ServiceOrder?
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  serviceOrder ServiceOrder?
 
   @@index([tenantId, startAt])
   @@index([tenantId, status])
@@ -712,19 +718,19 @@ model Appointment {
 // ============================================
 
 model Order {
-  id             String       @id @default(cuid())
+  id             String      @id @default(cuid())
   tenantId       String
   customerId     String
   conversationId String?
   externalRef    String?
   subtotal       Float
-  discount       Float        @default(0)
+  discount       Float       @default(0)
   total          Float
-  status         OrderStatus  @default(PENDING)
-  paymentStatus  String       @default("PENDING")
+  status         OrderStatus @default(PENDING)
+  paymentStatus  String      @default("PENDING")
   notes          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer   Customer         @relation(fields: [customerId], references: [id])
@@ -737,7 +743,7 @@ model Order {
 }
 
 model OrderItem {
-  id            String @id @default(cuid())
+  id            String   @id @default(cuid())
   orderId       String
   catalogItemId String?
   name          String
@@ -766,21 +772,21 @@ model OrderStatusLog {
 // ============================================
 
 model ServiceOrder {
-  id             String              @id @default(cuid())
+  id             String             @id @default(cuid())
   tenantId       String
   customerId     String
   conversationId String?
-  appointmentId  String?             @unique
+  appointmentId  String?            @unique
   orderId        String?
   title          String
   description    String?
-  status         ServiceOrderStatus  @default(OPEN)
-  priority       String              @default("NORMAL")
+  status         ServiceOrderStatus @default(OPEN)
+  priority       String             @default("NORMAL")
   assignedUserId String?
   resolution     String?
   closedAt       DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer       Customer                    @relation(fields: [customerId], references: [id])
@@ -806,15 +812,15 @@ model ServiceOrderTimelineEvent {
 // ============================================
 
 model CashEntry {
-  id            String   @id @default(cuid())
-  tenantId      String
-  type          String
-  amount        Float
-  description   String?
-  entryDate     DateTime
-  orderId       String?  @unique
-  serviceOrderId String? @unique
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  tenantId       String
+  type           String
+  amount         Float
+  description    String?
+  entryDate      DateTime
+  orderId        String?  @unique
+  serviceOrderId String?  @unique
+  createdAt      DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order  Order? @relation(fields: [orderId], references: [id])
@@ -827,11 +833,11 @@ model CashEntry {
 // ============================================
 
 model KnowledgeItem {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   tenantId          String
   title             String
   category          String
-  status            String   @default("PENDING")
+  status            String    @default("PENDING")
   rawContent        String?
   normalizedContent String?
   summary           String?
@@ -840,8 +846,8 @@ model KnowledgeItem {
   approvedBy        String?
   approvedAt        DateTime?
   embeddingRef      String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -864,21 +870,21 @@ model CatalogCategory {
 }
 
 model CatalogItem {
-  id                String   @id @default(cuid())
-  tenantId          String
-  categoryId        String?
-  name              String
-  sku               String?
-  description       String?
-  type              String   @default("PRODUCT")
-  defaultPrice      Float?
-  availabilityStatus String  @default("AVAILABLE")
-  stockQty          Int?
-  mediaUrls         String
-  tags              String
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  tenantId           String
+  categoryId         String?
+  name               String
+  sku                String?
+  description        String?
+  type               String   @default("PRODUCT")
+  defaultPrice       Float?
+  availabilityStatus String   @default("AVAILABLE")
+  stockQty           Int?
+  mediaUrls          String
+  tags               String
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -890,18 +896,18 @@ model CatalogItem {
 // ============================================
 
 model Campaign {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   name          String
   type          String
-  status        String   @default("DRAFT")
+  status        String    @default("DRAFT")
   segmentFilter String?
   templateText  String?
   scheduledAt   DateTime?
   completedAt   DateTime?
   resultStats   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -913,21 +919,21 @@ model Campaign {
 // ============================================
 
 model OperationalAlert {
-  id           String        @id @default(cuid())
-  tenantId     String
-  type         AlertType
-  severity     AlertSeverity @default(MEDIUM)
-  status       String        @default("OPEN")
-  title        String
-  description  String?
-  conversationId String?
+  id                String        @id @default(cuid())
+  tenantId          String
+  type              AlertType
+  severity          AlertSeverity @default(MEDIUM)
+  status            String        @default("OPEN")
+  title             String
+  description       String?
+  conversationId    String?
   relatedEntityType String?
-  relatedEntityId String?
-  assignedTo   String?
-  resolvedAt   DateTime?
-  resolvedBy   String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  relatedEntityId   String?
+  assignedTo        String?
+  resolvedAt        DateTime?
+  resolvedBy        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversation Conversation? @relation(fields: [conversationId], references: [id])
@@ -967,21 +973,21 @@ model Handoff {
 // ============================================
 
 model InternalContact {
-  id              String   @id @default(cuid())
-  tenantId        String
-  name            String
-  phoneE164       String
-  email           String?
-  role            String?
-  sector          String?
-  receivesHandoff Boolean  @default(false)
-  receivesApprovals Boolean @default(false)
-  receivesAlerts  Boolean  @default(false)
-  alertMinSeverity String?
-  priority        Int      @default(0)
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(cuid())
+  tenantId          String
+  name              String
+  phoneE164         String
+  email             String?
+  role              String?
+  sector            String?
+  receivesHandoff   Boolean  @default(false)
+  receivesApprovals Boolean  @default(false)
+  receivesAlerts    Boolean  @default(false)
+  alertMinSeverity  String?
+  priority          Int      @default(0)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -993,19 +999,19 @@ model InternalContact {
 // ============================================
 
 model NicheTemplate {
-  id                  String   @id @default(cuid())
-  name                String
-  slug                String   @unique
-  description         String?
-  status              String   @default("ACTIVE")
-  languageStyle       String?
-  promptBase          String?
-  objections          String?
-  recommendedModules  String
-  automations         String?
-  uiSchema            String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  description        String?
+  status             String   @default("ACTIVE")
+  languageStyle      String?
+  promptBase         String?
+  objections         String?
+  recommendedModules String
+  automations        String?
+  uiSchema           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tenants Tenant[]
 
@@ -1017,24 +1023,24 @@ model NicheTemplate {
 // ============================================
 
 model AiProfile {
-  id                 String  @id @default(cuid())
-  tenantId           String  @unique
-  tone               String  @default("PROFESSIONAL")
-  formalityLevel     Int     @default(50)
-  autonomyLevel      Int     @default(70)
-  scopeMode          String  @default("FULL")
-  restrictedTopics   String
-  handoffPolicy      String  @default("CONFIDENCE")
-  handoffKeywords    String
-  confidenceThreshold Float  @default(0.7)
-  businessRules      String?
-  workingHoursStart  Int?
-  workingHoursEnd    Int?
-  workingDays        String  @default("MON,TUE,WED,THU,FRI")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  tenantId            String   @unique
+  tone                String   @default("PROFESSIONAL")
+  formalityLevel      Int      @default(50)
+  autonomyLevel       Int      @default(70)
+  scopeMode           String   @default("FULL")
+  restrictedTopics    String
+  handoffPolicy       String   @default("CONFIDENCE")
+  handoffKeywords     String
+  confidenceThreshold Float    @default(0.7)
+  businessRules       String?
+  workingHoursStart   Int?
+  workingHoursEnd     Int?
+  workingDays         String   @default("MON,TUE,WED,THU,FRI")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   promptBlocks AiPromptBlock[]
   pool         AITenantPool?
 }
@@ -1056,19 +1062,19 @@ model AiPromptBlock {
 }
 
 model AIProviderAccount {
-  id                  String           @id @default(cuid())
-  tenantId            String?
-  provider            AIProviderType
-  displayName         String
-  apiKeyRef           String
-  status              String           @default("ACTIVE")
-  healthStatus        String           @default("UNKNOWN")
-  dailyLimitRequests  Int?
-  dailyLimitTokens    Int?
-  dailyLimitCost      Float?
-  lastHealthCheck     DateTime?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  id                 String         @id @default(cuid())
+  tenantId           String?
+  provider           AIProviderType
+  displayName        String
+  apiKeyRef          String
+  status             String         @default("ACTIVE")
+  healthStatus       String         @default("UNKNOWN")
+  dailyLimitRequests Int?
+  dailyLimitTokens   Int?
+  dailyLimitCost     Float?
+  lastHealthCheck    DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@index([provider])
   @@index([tenantId])
@@ -1077,7 +1083,7 @@ model AIProviderAccount {
 model AITenantPool {
   id              String   @id @default(cuid())
   tenantId        String   @unique
-  aiProfileId     String
+  aiProfileId     String   @unique
   name            String   @default("Default Pool")
   status          String   @default("ACTIVE")
   fallbackEnabled Boolean  @default(true)
@@ -1090,17 +1096,17 @@ model AITenantPool {
 }
 
 model AITenantPoolItem {
-  id                    String  @id @default(cuid())
-  poolId                String
-  providerAccountId     String
-  modelKey              String
-  priorityOrder         Int     @default(0)
-  isPrimary             Boolean @default(false)
-  enabled               Boolean @default(true)
-  maxRetries            Int     @default(2)
-  timeoutMs             Int     @default(30000)
+  id                     String  @id @default(cuid())
+  poolId                 String
+  providerAccountId      String
+  modelKey               String
+  priorityOrder          Int     @default(0)
+  isPrimary              Boolean @default(false)
+  enabled                Boolean @default(true)
+  maxRetries             Int     @default(2)
+  timeoutMs              Int     @default(30000)
   skipWhenQuotaExhausted Boolean @default(true)
-  skipWhenUnhealthy     Boolean @default(true)
+  skipWhenUnhealthy      Boolean @default(true)
 
   pool AITenantPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
 
@@ -1108,24 +1114,24 @@ model AITenantPoolItem {
 }
 
 model AiExecution {
-  id               String             @id @default(cuid())
-  tenantId         String
-  conversationId   String?
-  executionGroupId String?
-  poolId           String?
+  id                String            @id @default(cuid())
+  tenantId          String
+  conversationId    String?
+  executionGroupId  String?
+  poolId            String?
   providerAccountId String?
-  modelKey         String?
-  attemptOrder     Int                @default(1)
-  status           AIExecutionStatus  @default(PENDING)
-  failureType      String?
-  startedAt        DateTime           @default(now())
-  finishedAt       DateTime?
-  latencyMs        Int?
-  tokensIn         Int?
-  tokensOut        Int?
-  costAmount       Float?
-  responseValid    Boolean?
-  createdAt        DateTime           @default(now())
+  modelKey          String?
+  attemptOrder      Int               @default(1)
+  status            AIExecutionStatus @default(PENDING)
+  failureType       String?
+  startedAt         DateTime          @default(now())
+  finishedAt        DateTime?
+  latencyMs         Int?
+  tokensIn          Int?
+  tokensOut         Int?
+  costAmount        Float?
+  responseValid     Boolean?
+  createdAt         DateTime          @default(now())
 
   @@index([tenantId, createdAt])
   @@index([conversationId])
@@ -1150,19 +1156,19 @@ model AIFailoverEvent {
 // ============================================
 
 model MetaWallet {
-  id                   String   @id @default(cuid())
-  tenantId             String   @unique
-  balance              Float    @default(0)
-  currency             String   @default("BRL")
-  lowBalanceThreshold  Float?
-  markupPercent        Float?
-  lastTopupAt          DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  tenantId            String    @unique
+  balance             Float     @default(0)
+  currency            String    @default("BRL")
+  lowBalanceThreshold Float?
+  markupPercent       Float?
+  lastTopupAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entries      MetaCreditEntry[]
-  usageEvents  MetaUsageEvent[]
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries     MetaCreditEntry[]
+  usageEvents MetaUsageEvent[]
 }
 
 model MetaCreditEntry {
@@ -1197,17 +1203,17 @@ model MetaUsageEvent {
 // ============================================
 
 model UsageCounter {
-  id             String   @id @default(cuid())
-  tenantId       String
-  metricKey      String
-  currentValue   Int      @default(0)
-  limitValue     Int?
-  periodStart    DateTime?
-  periodEnd      DateTime?
+  id               String    @id @default(cuid())
+  tenantId         String
+  metricKey        String
+  currentValue     Int       @default(0)
+  limitValue       Int?
+  periodStart      DateTime?
+  periodEnd        DateTime?
   warningAtPercent Float?
-  lastBlockedAt  DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  lastBlockedAt    DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1219,21 +1225,21 @@ model UsageCounter {
 // ============================================
 
 model AuditLog {
-  id           String   @id @default(cuid())
-  tenantId     String
-  actorType    String
-  actorUserId  String?
-  action       String
-  entityType   String
-  entityId     String?
-  beforeJson   String?
-  afterJson    String?
-  ipAddress    String?
-  requestId    String?
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  tenantId    String
+  actorType   String
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  beforeJson  String?
+  afterJson   String?
+  ipAddress   String?
+  requestId   String?
+  createdAt   DateTime @default(now())
 
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorUser User?   @relation(fields: [actorUserId], references: [id])
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser User?  @relation(fields: [actorUserId], references: [id])
 
   @@index([tenantId, createdAt])
   @@index([entityType, entityId])
@@ -1244,9 +1250,9 @@ model AuditLog {
 // ============================================
 
 model SignupSession {
-  id              String   @id @default(cuid())
-  token           String   @unique
-  status          String   @default("STARTED")
+  id              String    @id @default(cuid())
+  token           String    @unique
+  status          String    @default("STARTED")
   companyName     String?
   ownerName       String?
   phone           String?
@@ -1256,7 +1262,7 @@ model SignupSession {
   resellerId      String?
   linkId          String?
   utm             String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   completedAt     DateTime?
 
   @@index([token])

@@ -102,6 +102,7 @@ import type {
   CompletionOptions,
   CompletionResult,
   AIProviderType,
+  FailoverEventHandler,
 } from './types';
 import { DEFAULT_PROVIDERS_CONFIG } from './pool';
 
@@ -169,7 +170,7 @@ export function createConfiguredPool(options: {
   providers?: AIProviderType[];
   defaultProvider?: AIProviderType;
   defaultModel?: string;
-  onFailover?: Parameters<typeof createAIPoolManager>[0]['onFailoverEvent'];
+  onFailover?: FailoverEventHandler;
 }): AIPoolManager {
   const { providers = ['openai', 'anthropic', 'gemini'], defaultProvider, defaultModel, onFailover } = options;
 

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth/next'
+import { Customer } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { PAGINATION } from '@/lib/constants'
@@ -32,7 +33,7 @@ const createCustomerSchema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   status: z.enum(['ACTIVE', 'INACTIVE', 'BLOCKED']).default('ACTIVE'),
   tags: z.array(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 // ============================================
@@ -148,7 +149,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit)
 
-    return NextResponse.json<PaginatedResponse<typeof formattedCustomers>>(
+    return NextResponse.json<PaginatedResponse<Customer>>(
       {
         success: true,
         data: formattedCustomers,

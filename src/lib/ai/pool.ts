@@ -548,7 +548,7 @@ export class AIPoolManager {
    */
   async createStreamingCompletion(
     messages: ChatMessage[],
-    options: StreamingOptions = {}
+    options: Partial<StreamingOptions> = {}
   ): Promise<StreamingResult> {
     await this.initialize();
 
@@ -588,7 +588,7 @@ export class AIPoolManager {
       };
     }
 
-    return provider.createStreamingCompletion(messages, options);
+    return provider.createStreamingCompletion(messages, { ...options, stream: true } as StreamingOptions);
   }
 
   /**

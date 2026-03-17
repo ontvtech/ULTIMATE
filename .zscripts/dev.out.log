@@ -1639,3 +1639,75 @@ You cannot have two parallel pages that resolve to the same path. Please check /
 You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
 
  GET / 500 in 19ms (compile: 8ms, render: 11ms)
+⨯ ./src/app/(landing)
+You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
+
+ GET / 500 in 16ms (compile: 5ms, render: 11ms)
+⨯ ./src/app/(landing)
+You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
+
+ GET / 500 in 11ms (compile: 4ms, render: 7ms)
+⨯ ./src/app/(landing)
+You cannot have two parallel pages that resolve to the same path. Please check /(auth)/register and /(landing).
+
+ GET / 500 in 11ms (compile: 4ms, render: 7ms)
+✓ Compiled in 125ms
+ GET / 307 in 196ms (compile: 51ms, render: 145ms)
+ GET /landing 404 in 441ms (compile: 374ms, render: 67ms)
+✓ Compiled in 152ms
+ GET /landing 404 in 24ms (compile: 7ms, render: 17ms)
+ GET /landing 404 in 38ms (compile: 5ms, render: 33ms)
+ GET /landing 404 in 24ms (compile: 6ms, render: 17ms)
+ GET /landing 404 in 26ms (compile: 6ms, render: 20ms)
+ GET /landing 404 in 36ms (compile: 7ms, render: 29ms)
+ GET /landing 404 in 26ms (compile: 6ms, render: 20ms)
+Persisting failed: Unable to write SST file 00001308.sst
+
+Caused by:
+    No such file or directory (os error 2)
+
+thread 'tokio-runtime-worker' (2451) panicked at /build/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
+Failed to restore task data (corrupted database or bug): Meta for ChunkItem::content_ident (TaskId 168217))
+
+Caused by:
+    0: Looking up data for TaskId 168217 from database failed
+    1: Unable to open static sorted file referenced from 00001304.meta
+    2: Unable to open static sorted file 00001299.sst
+    3: No such file or directory (os error 2)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'tokio-runtime-worker' (2451) panicked at /build/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
+Failed to restore task data (corrupted database or bug): Data for ChunkItem::content_ident (TaskId 168219))
+
+Caused by:
+    0: Looking up data for TaskId 168219 from database failed
+    1: Unable to open static sorted file referenced from 00001305.meta
+    2: Unable to open static sorted file 00001298.sst
+    3: No such file or directory (os error 2)
+
+thread 'tokio-runtime-worker' (2451) panicked at /build/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
+Failed to restore task data (corrupted database or bug): Data for chunk_items_with_info_with_type (TaskId 168254))
+
+Caused by:
+    0: Looking up data for TaskId 168254 from database failed
+    1: Unable to open static sorted file referenced from 00001305.meta
+    2: Unable to open static sorted file 00001296.sst
+    3: No such file or directory (os error 2)
+
+thread 'tokio-runtime-worker' (2456) panicked at /build/turbopack/crates/turbo-tasks-backend/src/backend/operation/mod.rs:156:17:
+Failed to restore task data (corrupted database or bug): Meta for <EcmascriptBuildNodeEntryChunk as Asset>::content (TaskId 168337))
+
+Caused by:
+    0: Looking up data for TaskId 168337 from database failed
+    1: Unable to open static sorted file referenced from 00001304.meta
+    2: Unable to open static sorted file 00001299.sst
+    3: No such file or directory (os error 2)
+○ Compiling / ...
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+error: script "dev" was terminated by signal SIGTERM (Polite quit request)
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+[?25h

@@ -135,12 +135,6 @@ export class AppointmentService {
             email: true,
           },
         },
-        conversation: {
-          select: {
-            id: true,
-            status: true,
-          },
-        },
       },
     });
 
@@ -162,10 +156,10 @@ export class AppointmentService {
         phoneE164: appointment.customer.phoneE164,
         email: appointment.customer.email ?? undefined,
       },
-      conversation: appointment.conversation
+      conversation: appointment.conversationId
         ? {
-            id: appointment.conversation.id,
-            status: appointment.conversation.status,
+            id: appointment.conversationId,
+            status: 'OPEN', // Default status since we don't have the full relation
           }
         : undefined,
     };

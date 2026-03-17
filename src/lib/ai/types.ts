@@ -343,6 +343,7 @@ export interface FailoverEvent {
   error?: Error;
   attemptNumber?: number;
   nextProvider?: AIProviderType;
+  originalProvider?: AIProviderType;
   metadata?: Record<string, unknown>;
 }
 

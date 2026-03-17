@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth/next'
+import { Conversation } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { PAGINATION, CONVERSATION_STATUS } from '@/lib/constants'
@@ -108,7 +109,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             name: true,
             phoneE164: true,
             email: true,
-            avatarUrl: true,
           },
         },
       },
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit)
 
-    return NextResponse.json<PaginatedResponse<typeof conversations>>(
+    return NextResponse.json<PaginatedResponse<Conversation>>(
       {
         success: true,
         data: conversations,

@@ -19,8 +19,8 @@ import { Separator } from '@/components/ui/separator'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  ConversationFiltersProps,
-  ConversationFilters,
+  type ConversationFiltersProps,
+  type ConversationFilters,
   STATUS_LABELS,
   STATUS_COLORS,
   MODE_LABELS,

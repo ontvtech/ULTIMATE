@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth/next'
+import { Message } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { PAGINATION, MESSAGE_STATUS } from '@/lib/constants'
@@ -94,8 +95,8 @@ export async function GET(
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
-    const params = Object.fromEntries(searchParams.entries())
-    const validationResult = listMessagesSchema.safeParse(params)
+    const queryParams = Object.fromEntries(searchParams.entries())
+    const validationResult = listMessagesSchema.safeParse(queryParams)
 
     if (!validationResult.success) {
       return NextResponse.json<ApiResponse>(
@@ -151,7 +152,7 @@ export async function GET(
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit)
 
-    return NextResponse.json<PaginatedResponse<typeof orderedMessages>>(
+    return NextResponse.json<PaginatedResponse<Message>>(
       {
         success: true,
         data: orderedMessages,
