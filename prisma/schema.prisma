@@ -1,0 +1,1264 @@
+// Prisma Schema - SaaSWPP AI Platform
+// Multi-tenant WhatsApp SaaS with AI Integration
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMERATIONS
+// ============================================
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELED
+  TRIALING
+  GRACE_PERIOD
+}
+
+enum TenantType {
+  ADMIN_PLATFORM
+  MERCHANT
+  RESELLER
+  INTERNAL
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  grace_period
+  suspended
+  canceled
+  expired
+}
+
+enum UserRole {
+  ADMIN
+  REVENDEDOR
+  LOJISTA
+  ATENDENTE
+  GESTOR
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  PENDING
+  HANDOFF
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum ServiceOrderStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_PARTS
+  COMPLETED
+  CANCELED
+}
+
+enum AlertType {
+  CUSTOMER_ANGRY
+  HOT_LEAD
+  HANDOFF_PENDING
+  ORDER_STUCK
+  OS_STUCK
+  PAYMENT_FAILED
+  INTEGRATION_ERROR
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum HandoffStatus {
+  REQUESTED
+  ACCEPTED
+  IN_PROGRESS
+  RESOLVED
+  REOPENED
+  TRANSFERRED
+}
+
+enum AIProviderType {
+  OPENAI
+  ANTHROPIC
+  GOOGLE
+  OPENROUTER
+  CUSTOM
+}
+
+enum AIExecutionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+// ============================================
+// CORE TENANT & AUTH MODULE
+// ============================================
+
+model Tenant {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  tradeName     String?
+  document      String?
+  phone         String?
+  email         String?
+  logoUrl       String?
+  timezone      String        @default("America/Sao_Paulo")
+  status        TenantStatus  @default(ACTIVE)
+  tenantType    TenantType    @default(MERCHANT)
+  nicheTemplateId String?
+  resellerId    String?
+  settings      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  users         UserTenant[]
+  subscriptions Subscription[]
+  conversations Conversation[]
+  customers     Customer[]
+  leads         Lead[]
+  appointments  Appointment[]
+  orders        Order[]
+  serviceOrders ServiceOrder[]
+  cashEntries   CashEntry[]
+  aiProfile     AiProfile?
+  knowledgeItems KnowledgeItem[]
+  catalogItems  CatalogItem[]
+  campaigns     Campaign[]
+  alerts        OperationalAlert[]
+  handoffs      Handoff[]
+  internalContacts InternalContact[]
+  whatsappInstances WhatsAppInstance[]
+  metaWallet    MetaWallet?
+  usageCounters UsageCounter[]
+  auditLogs     AuditLog[]
+  tenantAddons  TenantAddon[]
+  pipelineStages PipelineStage[]
+
+  @@index([status])
+  @@index([resellerId])
+  @@index([createdAt])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  avatarUrl    String?
+  status       String   @default("ACTIVE")
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userTenants  UserTenant[]
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+model UserTenant {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  roleId    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  createdAt   DateTime @default(now())
+
+  permissions   RolePermission[]
+  userTenants   UserTenant[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  module      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ============================================
+// BILLING MODULE
+// ============================================
+
+model Plan {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  priceMonthly Float
+  priceYearly  Float?
+  trialDays    Int      @default(7)
+  graceDays    Int      @default(5)
+  status       String   @default("ACTIVE")
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  planModules  PlanModule[]
+  planLimits   PlanLimit[]
+  subscriptions Subscription[]
+  tenantAddons TenantAddon[]
+
+  @@index([status])
+}
+
+model FeatureModule {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  type        String
+  status      String   @default("ACTIVE")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  planModules PlanModule[]
+}
+
+model PlanModule {
+  id         String @id @default(cuid())
+  planId     String
+  moduleId   String
+  accessType String @default("INCLUDED")
+
+  plan   Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  module FeatureModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, moduleId])
+}
+
+model PlanLimit {
+  id         String @id @default(cuid())
+  planId     String
+  limitKey   String
+  limitValue Int
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, limitKey])
+}
+
+model Addon {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  priceMonthly Float
+  priceYearly  Float?
+  type         String   @default("RECURRING")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenantAddons TenantAddon[]
+}
+
+model TenantAddon {
+  id        String   @id @default(cuid())
+  tenantId  String
+  addonId   String
+  planId    String?
+  status    String   @default("ACTIVE")
+  startedAt DateTime @default(now())
+  expiresAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addon  Addon  @relation(fields: [addonId], references: [id])
+  plan   Plan?  @relation(fields: [planId], references: [id])
+
+  @@unique([tenantId, addonId])
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  tenantId               String
+  planId                 String
+  provider               String             @default("IUGU")
+  providerSubscriptionId String?            @unique
+  providerCustomerId     String?
+  status                 SubscriptionStatus @default(trialing)
+  startedAt              DateTime           @default(now())
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  canceledAt             DateTime?
+  suspendedAt            DateTime?
+  reactivatedAt          DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan     Plan       @relation(fields: [planId], references: [id])
+  invoices Invoice[]
+  commissionLedgers CommissionLedger[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  subscriptionId   String
+  providerInvoiceId String? @unique
+  status           String   @default("PENDING")
+  amount           Float
+  currency         String   @default("BRL")
+  dueDate          DateTime
+  paidAt           DateTime?
+  paymentUrl       String?
+  pdfUrl           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, dueDate])
+  @@index([status])
+}
+
+model TenantBillingStatus {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  status            String   @default("ACTIVE")
+  enforcementLevel  Int      @default(0)
+  graceEndsAt       DateTime?
+  readOnlyReason    String?
+  blockedModules    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ============================================
+// RESELLER MODULE
+// ============================================
+
+model ResellerProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  tenantId           String?
+  displayName        String
+  status             String   @default("ACTIVE")
+  commissionPolicyId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user           User                    @relation(fields: [userId], references: [id])
+  tenant         Tenant?                 @relation(fields: [tenantId], references: [id])
+  links          ResellerLink[]
+  attributedLeads ResellerLeadAttribution[]
+  commissionLedgers CommissionLedger[]
+  tenants        Tenant[]
+
+  @@index([status])
+}
+
+model ResellerLink {
+  id                String   @id @default(cuid())
+  resellerId        String
+  code              String   @unique
+  mode              String   @default("GLOBAL")
+  campaignName      String?
+  fixedNicheId      String?
+  trialDaysOverride Int?
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  reseller ResellerProfile @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+
+  @@index([resellerId])
+  @@index([code])
+}
+
+model ResellerLeadAttribution {
+  id           String   @id @default(cuid())
+  resellerId   String
+  tenantId     String   @unique
+  linkId       String?
+  campaignId   String?
+  attributedAt DateTime @default(now())
+
+  reseller ResellerProfile @relation(fields: [resellerId], references: [id])
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@index([resellerId])
+}
+
+model CommissionPolicy {
+  id           String   @id @default(cuid())
+  name         String
+  basePercent  Float    @default(20.0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tiers     CommissionTier[]
+  resellers ResellerProfile[]
+}
+
+model CommissionTier {
+  id                String @id @default(cuid())
+  policyId          String
+  name              String
+  minActiveAccounts Int
+  minMRR            Float?
+  percent           Float
+
+  policy CommissionPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+}
+
+model CommissionLedger {
+  id               String   @id @default(cuid())
+  resellerId       String
+  subscriptionId   String?
+  competenceMonth  String
+  baseAmount       Float
+  percentApplied   Float
+  commissionAmount Float
+  status           String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reseller    ResellerProfile @relation(fields: [resellerId], references: [id])
+  subscription Subscription?  @relation(fields: [subscriptionId], references: [id])
+
+  @@index([resellerId, competenceMonth])
+}
+
+// ============================================
+// WHATSAPP MODULE
+// ============================================
+
+model WhatsAppInstance {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  provider             String
+  providerInstanceId   String?
+  status               String   @default("DISCONNECTED")
+  phoneNumberId        String?
+  wabaId               String?
+  instanceName         String?
+  qrCode               String?
+  lastSeenAt           DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  numbers WhatsAppNumber[]
+
+  @@unique([tenantId, provider])
+}
+
+model WhatsAppNumber {
+  id             String   @id @default(cuid())
+  instanceId     String
+  phoneE164      String   @unique
+  displayName    String?
+  status         String   @default("ACTIVE")
+  qualityRating  String?
+  messagingTier  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  instance WhatsAppInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// CONVERSATION MODULE
+// ============================================
+
+model Conversation {
+  id                String             @id @default(cuid())
+  tenantId          String
+  customerId        String
+  channel           String             @default("WHATSAPP")
+  status            ConversationStatus @default(OPEN)
+  aiMode            Boolean            @default(true)
+  assignedMode      String             @default("AI")
+  assignedUserId    String?
+  lastMessageAt     DateTime           @default(now())
+  lastMessagePreview String?
+  unreadCount       Int                @default(0)
+  intentDetected    String?
+  sentimentScore    Float?
+  confidenceScore   Float?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer  Customer @relation(fields: [customerId], references: [id])
+  messages  Message[]
+  handoffs  Handoff[]
+  alerts    OperationalAlert[]
+
+  @@index([tenantId, lastMessageAt])
+  @@index([tenantId, status])
+}
+
+model Message {
+  id                 String          @id @default(cuid())
+  conversationId     String
+  direction          MessageDirection
+  contentType        String          @default("TEXT")
+  content            String
+  provider           String?
+  providerMessageId  String?         @unique
+  aiGenerated        Boolean         @default(false)
+  aiProvider         String?
+  status             String          @default("SENT")
+  createdAt          DateTime        @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// ============================================
+// CRM MODULE
+// ============================================
+
+model Customer {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  phoneE164   String
+  email       String?
+  status      String   @default("ACTIVE")
+  totalOrders Int      @default(0)
+  totalSpent  Float    @default(0)
+  lastOrderAt DateTime?
+  tags        String
+  metadata    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  leads         Lead[]
+  orders        Order[]
+  serviceOrders ServiceOrder[]
+  appointments  Appointment[]
+
+  @@unique([tenantId, phoneE164])
+  @@index([tenantId])
+}
+
+model Lead {
+  id                String     @id @default(cuid())
+  tenantId          String
+  customerId        String
+  status            LeadStatus @default(NEW)
+  stageId           String?
+  source            String?
+  campaignId        String?
+  score             Int        @default(0)
+  chancePercent     Int?
+  isHot             Boolean    @default(false)
+  notes             String?
+  lastInteractionAt DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer  Customer @relation(fields: [customerId], references: [id])
+  followUpTasks FollowUpTask[]
+
+  @@index([tenantId, status])
+  @@index([isHot])
+}
+
+model PipelineStage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  order     Int      @default(0)
+  color     String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, order])
+}
+
+model FollowUpTask {
+  id          String   @id @default(cuid())
+  leadId      String
+  tenantId    String
+  title       String
+  description String?
+  dueAt       DateTime
+  status      String   @default("PENDING")
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, dueAt])
+  @@index([status])
+}
+
+// ============================================
+// APPOINTMENT MODULE
+// ============================================
+
+model Appointment {
+  id             String             @id @default(cuid())
+  tenantId       String
+  customerId     String
+  conversationId String?
+  title          String?
+  description    String?
+  startAt        DateTime
+  endAt          DateTime
+  status         AppointmentStatus  @default(SCHEDULED)
+  mode           String             @default("AUTO")
+  serviceTypeId  String?
+  assignedUserId String?
+  origin         String             @default("MANUAL")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  serviceOrder  ServiceOrder?
+
+  @@index([tenantId, startAt])
+  @@index([tenantId, status])
+}
+
+// ============================================
+// ORDER MODULE
+// ============================================
+
+model Order {
+  id             String       @id @default(cuid())
+  tenantId       String
+  customerId     String
+  conversationId String?
+  externalRef    String?
+  subtotal       Float
+  discount       Float        @default(0)
+  total          Float
+  status         OrderStatus  @default(PENDING)
+  paymentStatus  String       @default("PENDING")
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer   Customer         @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+  statusLogs OrderStatusLog[]
+  cashEntry  CashEntry?
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+model OrderItem {
+  id            String @id @default(cuid())
+  orderId       String
+  catalogItemId String?
+  name          String
+  quantity      Int
+  unitPrice     Float
+  total         Float
+  createdAt     DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model OrderStatusLog {
+  id         String      @id @default(cuid())
+  orderId    String
+  fromStatus String?
+  toStatus   OrderStatus
+  reason     String?
+  changedBy  String?
+  createdAt  DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// SERVICE ORDER MODULE
+// ============================================
+
+model ServiceOrder {
+  id             String              @id @default(cuid())
+  tenantId       String
+  customerId     String
+  conversationId String?
+  appointmentId  String?             @unique
+  orderId        String?
+  title          String
+  description    String?
+  status         ServiceOrderStatus  @default(OPEN)
+  priority       String              @default("NORMAL")
+  assignedUserId String?
+  resolution     String?
+  closedAt       DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer       Customer                    @relation(fields: [customerId], references: [id])
+  appointment    Appointment?                @relation(fields: [appointmentId], references: [id])
+  timelineEvents ServiceOrderTimelineEvent[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, customerId])
+}
+
+model ServiceOrderTimelineEvent {
+  id             String   @id @default(cuid())
+  serviceOrderId String
+  eventType      String
+  content        String?
+  createdAt      DateTime @default(now())
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// FINANCE MODULE
+// ============================================
+
+model CashEntry {
+  id            String   @id @default(cuid())
+  tenantId      String
+  type          String
+  amount        Float
+  description   String?
+  entryDate     DateTime
+  orderId       String?  @unique
+  serviceOrderId String? @unique
+  createdAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id])
+
+  @@index([tenantId, entryDate])
+}
+
+// ============================================
+// KNOWLEDGE BASE MODULE
+// ============================================
+
+model KnowledgeItem {
+  id                String   @id @default(cuid())
+  tenantId          String
+  title             String
+  category          String
+  status            String   @default("PENDING")
+  rawContent        String?
+  normalizedContent String?
+  summary           String?
+  sourceType        String
+  sourceUrl         String?
+  approvedBy        String?
+  approvedAt        DateTime?
+  embeddingRef      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@index([tenantId, status])
+}
+
+// ============================================
+// CATALOG MODULE
+// ============================================
+
+model CatalogCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model CatalogItem {
+  id                String   @id @default(cuid())
+  tenantId          String
+  categoryId        String?
+  name              String
+  sku               String?
+  description       String?
+  type              String   @default("PRODUCT")
+  defaultPrice      Float?
+  availabilityStatus String  @default("AVAILABLE")
+  stockQty          Int?
+  mediaUrls         String
+  tags              String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
+}
+
+// ============================================
+// CAMPAIGN MODULE
+// ============================================
+
+model Campaign {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  type          String
+  status        String   @default("DRAFT")
+  segmentFilter String?
+  templateText  String?
+  scheduledAt   DateTime?
+  completedAt   DateTime?
+  resultStats   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+}
+
+// ============================================
+// ALERT MODULE
+// ============================================
+
+model OperationalAlert {
+  id           String        @id @default(cuid())
+  tenantId     String
+  type         AlertType
+  severity     AlertSeverity @default(MEDIUM)
+  status       String        @default("OPEN")
+  title        String
+  description  String?
+  conversationId String?
+  relatedEntityType String?
+  relatedEntityId String?
+  assignedTo   String?
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+
+  @@index([tenantId, status, severity])
+  @@index([tenantId, type])
+}
+
+// ============================================
+// HANDOFF MODULE
+// ============================================
+
+model Handoff {
+  id             String        @id @default(cuid())
+  tenantId       String
+  conversationId String
+  reason         String
+  status         HandoffStatus @default(REQUESTED)
+  priority       String        @default("NORMAL")
+  requestedBy    String?
+  assignedTo     String?
+  notes          String?
+  acceptedAt     DateTime?
+  resolvedAt     DateTime?
+  reopenedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([tenantId, status])
+}
+
+// ============================================
+// INTERNAL CONTACT MODULE
+// ============================================
+
+model InternalContact {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  phoneE164       String
+  email           String?
+  role            String?
+  sector          String?
+  receivesHandoff Boolean  @default(false)
+  receivesApprovals Boolean @default(false)
+  receivesAlerts  Boolean  @default(false)
+  alertMinSeverity String?
+  priority        Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, phoneE164])
+}
+
+// ============================================
+// NICHE TEMPLATE MODULE
+// ============================================
+
+model NicheTemplate {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  description         String?
+  status              String   @default("ACTIVE")
+  languageStyle       String?
+  promptBase          String?
+  objections          String?
+  recommendedModules  String
+  automations         String?
+  uiSchema            String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenants Tenant[]
+
+  @@index([status])
+}
+
+// ============================================
+// AI MODULE
+// ============================================
+
+model AiProfile {
+  id                 String  @id @default(cuid())
+  tenantId           String  @unique
+  tone               String  @default("PROFESSIONAL")
+  formalityLevel     Int     @default(50)
+  autonomyLevel      Int     @default(70)
+  scopeMode          String  @default("FULL")
+  restrictedTopics   String
+  handoffPolicy      String  @default("CONFIDENCE")
+  handoffKeywords    String
+  confidenceThreshold Float  @default(0.7)
+  businessRules      String?
+  workingHoursStart  Int?
+  workingHoursEnd    Int?
+  workingDays        String  @default("MON,TUE,WED,THU,FRI")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promptBlocks AiPromptBlock[]
+  pool         AITenantPool?
+}
+
+model AiPromptBlock {
+  id          String   @id @default(cuid())
+  aiProfileId String
+  blockType   String
+  name        String
+  content     String
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  aiProfile AiProfile @relation(fields: [aiProfileId], references: [id], onDelete: Cascade)
+
+  @@index([aiProfileId, sortOrder])
+}
+
+model AIProviderAccount {
+  id                  String           @id @default(cuid())
+  tenantId            String?
+  provider            AIProviderType
+  displayName         String
+  apiKeyRef           String
+  status              String           @default("ACTIVE")
+  healthStatus        String           @default("UNKNOWN")
+  dailyLimitRequests  Int?
+  dailyLimitTokens    Int?
+  dailyLimitCost      Float?
+  lastHealthCheck     DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([provider])
+  @@index([tenantId])
+}
+
+model AITenantPool {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  aiProfileId     String
+  name            String   @default("Default Pool")
+  status          String   @default("ACTIVE")
+  fallbackEnabled Boolean  @default(true)
+  strategy        String   @default("PRIORITY")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  aiProfile AiProfile          @relation(fields: [aiProfileId], references: [id])
+  items     AITenantPoolItem[]
+}
+
+model AITenantPoolItem {
+  id                    String  @id @default(cuid())
+  poolId                String
+  providerAccountId     String
+  modelKey              String
+  priorityOrder         Int     @default(0)
+  isPrimary             Boolean @default(false)
+  enabled               Boolean @default(true)
+  maxRetries            Int     @default(2)
+  timeoutMs             Int     @default(30000)
+  skipWhenQuotaExhausted Boolean @default(true)
+  skipWhenUnhealthy     Boolean @default(true)
+
+  pool AITenantPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, priorityOrder])
+}
+
+model AiExecution {
+  id               String             @id @default(cuid())
+  tenantId         String
+  conversationId   String?
+  executionGroupId String?
+  poolId           String?
+  providerAccountId String?
+  modelKey         String?
+  attemptOrder     Int                @default(1)
+  status           AIExecutionStatus  @default(PENDING)
+  failureType      String?
+  startedAt        DateTime           @default(now())
+  finishedAt       DateTime?
+  latencyMs        Int?
+  tokensIn         Int?
+  tokensOut        Int?
+  costAmount       Float?
+  responseValid    Boolean?
+  createdAt        DateTime           @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([conversationId])
+}
+
+model AIFailoverEvent {
+  id             String   @id @default(cuid())
+  tenantId       String
+  conversationId String?
+  fromProvider   String?
+  fromModel      String?
+  toProvider     String?
+  toModel        String?
+  reason         String
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// ============================================
+// META WALLET MODULE
+// ============================================
+
+model MetaWallet {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  balance              Float    @default(0)
+  currency             String   @default("BRL")
+  lowBalanceThreshold  Float?
+  markupPercent        Float?
+  lastTopupAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries      MetaCreditEntry[]
+  usageEvents  MetaUsageEvent[]
+}
+
+model MetaCreditEntry {
+  id          String   @id @default(cuid())
+  walletId    String
+  type        String
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+
+  wallet MetaWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model MetaUsageEvent {
+  id              String   @id @default(cuid())
+  walletId        String
+  tenantId        String
+  providerUsageId String?  @unique
+  messageType     String
+  direction       String
+  cost            Float
+  conversationId  String?
+  createdAt       DateTime @default(now())
+
+  wallet MetaWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+}
+
+// ============================================
+// USAGE COUNTER MODULE
+// ============================================
+
+model UsageCounter {
+  id             String   @id @default(cuid())
+  tenantId       String
+  metricKey      String
+  currentValue   Int      @default(0)
+  limitValue     Int?
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  warningAtPercent Float?
+  lastBlockedAt  DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, metricKey])
+}
+
+// ============================================
+// AUDIT LOG MODULE
+// ============================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  actorType    String
+  actorUserId  String?
+  action       String
+  entityType   String
+  entityId     String?
+  beforeJson   String?
+  afterJson    String?
+  ipAddress    String?
+  requestId    String?
+  createdAt    DateTime @default(now())
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser User?   @relation(fields: [actorUserId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ============================================
+// ONBOARDING MODULE
+// ============================================
+
+model SignupSession {
+  id              String   @id @default(cuid())
+  token           String   @unique
+  status          String   @default("STARTED")
+  companyName     String?
+  ownerName       String?
+  phone           String?
+  email           String?
+  selectedPlanId  String?
+  selectedNicheId String?
+  resellerId      String?
+  linkId          String?
+  utm             String?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  @@index([token])
+  @@index([resellerId])
+}
